@@ -86,7 +86,8 @@ public:
     // extract SIFT with method from vl_feat, to the format of bapl_keypoint_sptr
     static bool vl_keypoint_extractor(const vil_image_view<vxl_byte> & image,
                                       const vl_feat_sift_parameter &parameter,
-                                      vcl_vector<bapl_keypoint_sptr> & keypoints, bool verbose = true);
+                                      vcl_vector<bapl_keypoint_sptr> & keypoints,
+                                      bool verbose = true);
     
     
     
