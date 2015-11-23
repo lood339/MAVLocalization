@@ -33,6 +33,14 @@ public:
                                  vcl_vector<vcl_pair<int, int> > & matchedIndices,
                                  double ratio = 0.7,
                                  double feature_distance_threshold = 0.5);
+    
+    // match sift to a set of asift feature
+    static void asift_match_by_ratio(const vcl_vector<bapl_keypoint_sptr> & keypointsA,
+                                     const vcl_vector<vcl_vector<bapl_keypoint_sptr> > & keypointsB,
+                                     vcl_vector<bapl_key_match> & matches,                                    
+                                     double ratio = 0.7,
+                                     double feature_distance_threshold = 0.5);
+                                     
     // return inlier number
     static int siftMatchAndHomography(const vcl_vector<bapl_keypoint_sptr> & keypointsA,
                                       const vcl_vector<bapl_keypoint_sptr> & keypointsB,

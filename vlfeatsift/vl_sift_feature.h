@@ -72,7 +72,7 @@ struct vl_feat_sift_parameter
     vl_feat_sift_parameter()
     {
         edge_thresh  = 10 ;
-        peak_thresh  = 0 ;
+        peak_thresh  = 0 ;  // 20
         magnif       = 3 ;
         norm_thresh  = -1;
         window_size  = 2;

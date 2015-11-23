@@ -12,7 +12,9 @@
 #include <vgl/vgl_distance.h>
 #include "rrel_plus.hpp"
 #include "vil_bapl_sift.h"
+#include <unordered_map>
 
+using std::unordered_map;
 
 void VxlFeatureMatch::siftMatchByRatio(const vcl_vector<bapl_keypoint_sptr> & keypointsA,
                                        const vcl_vector<bapl_keypoint_sptr> & keypointsB,
@@ -40,7 +42,58 @@ void VxlFeatureMatch::siftMatchByRatio(const vcl_vector<bapl_keypoint_sptr> & ke
             }
         }        
     }
-   // printf("find %lu matches from %lu points\n", matches.size(), keypointsA.size());
+    printf("find %lu matches from %lu points\n", matches.size(), keypointsA.size());
+}
+
+static double distance_of_match(const bapl_key_match & match)
+{
+    return vnl_vector_ssd(match.first->descriptor(), match.second->descriptor());
+}
+
+void VxlFeatureMatch::asift_match_by_ratio(const vcl_vector<bapl_keypoint_sptr> & keypointsA,
+                                           const vcl_vector<vcl_vector<bapl_keypoint_sptr> > & keypointsB,
+                                           vcl_vector<bapl_key_match> & matches,
+                                           double ratio,
+                                           double feature_distance_threshold)
+{
+    // index in keypoint A -- > match
+    std::unordered_map<int, bapl_key_match> all_matches;
+    for (int i = 0; i<keypointsB.size(); i++) {
+        vcl_vector<bapl_key_match>      cur_matches;
+        vcl_vector<vcl_pair<int, int> > cur_matched_indices;
+        VxlFeatureMatch::siftMatchByRatio(keypointsA, keypointsB[i], cur_matches, cur_matched_indices, ratio, feature_distance_threshold);
+        
+        if (i == 0) {
+            for (int j = 0; j<cur_matches.size(); j++) {
+                all_matches[cur_matched_indices[j].first] = cur_matches[j];
+            }
+        }
+        else
+        {
+            for (int j = 0; j<cur_matches.size(); j++) {
+                int cur_index = cur_matched_indices[j].first;
+                std::unordered_map<int, bapl_key_match>::iterator ite = all_matches.find(cur_index);
+                // insert unseen matches
+                if (ite == all_matches.end()) {
+                    all_matches[cur_index] = cur_matches[j];
+                }
+                else
+                {
+                    double dis1 = distance_of_match(all_matches[cur_index]);
+                    double dis2 = distance_of_match(cur_matches[j]);
+                    
+                    // replace the match with the match that has smaller distance
+                    if (dis2 < dis1) {
+                        all_matches[cur_index] = cur_matches[j];
+                    }
+                }
+            }
+        }
+    }
+    for (std::unordered_map<int, bapl_key_match>::iterator ite = all_matches.begin(); ite != all_matches.end(); ite++) {
+        matches.push_back(ite->second);
+    }
+    printf("find %lu matches\n", matches.size());
 }
 
 int VxlFeatureMatch::siftMatchAndHomography(const vcl_vector<bapl_keypoint_sptr> & keypointsA,
@@ -74,6 +127,7 @@ int VxlFeatureMatch::siftMatchAndHomography(const vcl_vector<bapl_keypoint_sptr>
     inlierPtsB = pts_query;
     
     assert(inlierPtsA.size() == inlierPtsB.size());
+    printf("find %lu matches\n", inlierPtsA.size());
     return (int)inlierPtsA.size();
 }
 

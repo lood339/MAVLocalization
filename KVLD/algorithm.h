@@ -22,15 +22,46 @@ the terms of the BSD license (see the COPYING file).
 #include <algorithm>
 #include <functional>
 
+/*
+ #ifdef _WIN32
+ //define something for Windows (32-bit and 64-bit, this part is common)
+ #ifdef _WIN64
+ //define something for Windows (64-bit only)
+ #endif
+ #elif __APPLE__
+ #include "TargetConditionals.h"
+ #if TARGET_IPHONE_SIMULATOR
+ // iOS Simulator
+ #elif TARGET_OS_IPHONE
+ // iOS device
+ #elif TARGET_OS_MAC
+ // Other kinds of Mac OS
+ #else
+ #   error "Unknown Apple platform"
+ #endif
+ #elif __linux__
+ // linux
+ #elif __unix__ // all unices not caught above
+ // Unix
+ #elif defined(_POSIX_VERSION)
+ // POSIX
+ #else
+ #   error "Unknown compiler"
+ #endif
+ */
+#ifdef _WIN32
 #include <opencv\cv.hpp>
-
 #ifdef _DEBUG
-	#pragma comment(lib, "opencv_ts300d.lib")		
-	#pragma comment(lib, "opencv_world300d.lib")
+#pragma comment(lib, "opencv_ts300d.lib")
+#pragma comment(lib, "opencv_world300d.lib")
 #else
-	#pragma comment(lib, "opencv_ts300.lib")
-	#pragma comment(lib, "opencv_world300.lib")
+#pragma comment(lib, "opencv_ts300.lib")
+#pragma comment(lib, "opencv_world300.lib")
 #endif
+#elif __APPLE__
+#include "cvxImage_300.h"
+#endif
+
 
 #ifndef OriSize
 #define OriSize  8
