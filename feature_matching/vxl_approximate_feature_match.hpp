@@ -33,15 +33,6 @@ public:
                                     double ratio = 0.7,
                                     double feature_distance_threshold = 0.5);
     
-    // affine sift feature matching.
-    // affine sift feature are from multiple images.
-    // 1. unique test; 2. remove many to one; 3. remove one to many
-    static void asift_match_by_ratio(const vcl_vector< vcl_vector<bapl_keypoint_sptr> > & keypointsA,
-                                     const vcl_vector< vcl_vector<bapl_keypoint_sptr> > & keypointsB,
-                                     vcl_vector<bapl_key_match> & matches,
-                                     int search_leaf_num,
-                                     double ratio = 0.7,
-                                     double feature_distance_threshold = 0.5);
     
     
 };

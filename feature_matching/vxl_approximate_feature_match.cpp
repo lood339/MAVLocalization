@@ -53,17 +53,6 @@ void vxl_approximate_feature_match::sift_match_by_ratio(const vcl_vector<bapl_ke
     printf("find %lu matches from %lu points\n", matches.size(), keypointsA.size());
 }
 
-void vxl_approximate_feature_match::asift_match_by_ratio(const vcl_vector< vcl_vector<bapl_keypoint_sptr> > & keypointsA,
-                                                         const vcl_vector< vcl_vector<bapl_keypoint_sptr> > & keypointsB,
-                                                         vcl_vector<bapl_key_match> & matches,
-                                                         int search_leaf_num,
-                                                         double ratio,
-                                                         double feature_distance_threshold)
-{
-    
-    
-}
-
 
 
 
