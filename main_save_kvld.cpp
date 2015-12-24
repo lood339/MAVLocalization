@@ -6,7 +6,7 @@
 //  Copyright © 2015 jimmy. All rights reserved.
 //
 
-#if 1
+#if 0
 
 #include <iostream>
 #include <time.h>

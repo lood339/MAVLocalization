@@ -13,6 +13,7 @@
 #include "vil_draw.hpp"
 #include "vxlOpenCV.h"
 #include "vxl_asift_warp.hpp"
+#include "vil_util.hpp"
 
 // check boundary and transform the location to the original image
 static void boundary_check(vcl_vector<bapl_keypoint_sptr> & keypoints,
@@ -199,6 +200,15 @@ bool vil_asift_feature::asift_keypoints_extractor(const vil_image_view<vxl_byte>
             affines.push_back(affine);
         }
     }
+    
+    // save affined images for test purpose
+    /*
+    for (int i = 0; i<affine_warped_images.size(); i++) {
+        char buf[1024] = {NULL};
+        sprintf(buf, "affine_%d.jpg", i);
+        VilUtil::vil_save(affine_warped_images[i], buf);
+    }
+     */
     vil_asift_feature::asift_keypoint_extractor(image, affine_warped_images, affines, param, keypoints);
     printf("find %lu groups of ASIFT key points\n", keypoints.size());
     return true;
