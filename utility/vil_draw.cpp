@@ -182,7 +182,7 @@ void VilDraw::draw_match_dense(const vil_image_view<vxl_byte> &image1, const vil
             inlier2.push_back(pts2[i]);
         }
     }
-    
+    printf("inlier number is %lu", inlier1.size());    
     VilDraw::draw_match(image1, image2, inlier1, inlier2, matches, thickness);
 }
 
