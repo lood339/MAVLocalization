@@ -37,6 +37,17 @@ class RTAB_node
     RTAB_node *next_;              // neighbor in next (time)
     list<RTAB_node *> loop_closure_neighbors_;
     
+public:
+    RTAB_node()
+    {
+        image_index_ = 0;
+        weight_ = 0;
+        memory_type_ = senscory;
+        
+        pre_ = NULL;
+        next_ = NULL;
+    }
+    
     RTAB_node(unsigned long index, double w, const Mat & signature, RTAB_memory type)
     {
         image_index_ = index;
@@ -54,5 +65,8 @@ class RTAB_node
         next_ = NULL;
     }
 };
+
+// @todo Algorithm 2
+RTAB_node * RTAB_create_location(const Mat & image);
 
 #endif /* RTAB_node_cpp */
