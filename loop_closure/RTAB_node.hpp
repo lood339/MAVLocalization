@@ -20,12 +20,16 @@ using std::vector;
 using std::list;
 using cv::Mat;
 
+class RTAB_mapl;
+
 // memory type
 enum RTAB_memory{senscory, short_term, working, long_term};
 
 
 class RTAB_node
 {
+    friend class RTAB_map;
+    
     // property from images
     unsigned long image_index_;    // used as time index (age)
     double weight_;                // section III B

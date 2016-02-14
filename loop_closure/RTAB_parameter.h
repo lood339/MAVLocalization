@@ -15,14 +15,16 @@
 class RTAB_parameter
 {
 public:
-    int T_stm_;
-    double T_similarity_;
-    double T_recent_;
+    static const int T_stm_ = 30;
+    constexpr static const double T_similarity_ = 0.2;
+    constexpr static const double T_recent_ = 0.2;
     
-    double surf_T_nndr_;
-    int surf_T_max_feature_;
-    double surf_T_bad_;
+    constexpr static const double surf_T_nndr_ = 0.8;
+    static const int surf_T_max_feature_ = 400;  // maxinum number of feature
+    static const int surf_T_min_feature_ = 50;  // mininum number of feature
+    constexpr static const double surf_T_bad_ = 0.25;
     
+    /*
     RTAB_parameter()
     {
         T_stm_ = 30;
@@ -31,8 +33,10 @@ public:
         
         surf_T_nndr_ = 0.8;
         surf_T_max_feature_ = 400;
+        surf_T_min_feature_ = 50;
         surf_T_bad_ = 0.25;
     }
+     */
     
 };
 
