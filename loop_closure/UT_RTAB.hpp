@@ -11,6 +11,6 @@
 
 // RTAB unit test
 void test_RTAB();
-
+void test_feature_extraction();
 
 #endif /* UT_RTAB_cpp */
