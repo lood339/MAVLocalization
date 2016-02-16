@@ -8,7 +8,7 @@
 
 
 #include "UT_RTAB.hpp"
-#include "RTAB_feature_extraction.h"
+#include "RTAB_feature_extraction.hpp"
 //#include "RTAB_node.hpp"
 //#include "RTAB_map.hpp"
 //#include "RTAB_incremental_vocabulary.hpp"

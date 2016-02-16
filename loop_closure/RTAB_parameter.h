@@ -15,9 +15,9 @@
 class RTAB_parameter
 {
 public:
-    static const int T_stm_ = 30;
+    static const int T_stm_ = 30;   // short term memory length
     constexpr static const double T_similarity_ = 0.2;
-    constexpr static const double T_recent_ = 0.2;
+    constexpr static const double T_recent_ = 0.2; 
     
     constexpr static const double surf_T_nndr_ = 0.8;
     static const int surf_T_max_feature_ = 400;  // maxinum number of feature
