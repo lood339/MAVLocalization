@@ -11,6 +11,9 @@
 
 // RTAB unit test
 void test_RTAB();
+
+#if CV_MAJOR_VERSION == 2
 void test_feature_extraction();
+#endif
 
 #endif /* UT_RTAB_cpp */

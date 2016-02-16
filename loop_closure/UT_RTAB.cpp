@@ -8,19 +8,26 @@
 
 
 #include "UT_RTAB.hpp"
-//#include "RTAB_feature_extraction.h"
-//#include "RTAB_node.hpp"
-//#include "RTAB_map.hpp"
+#include "RTAB_node.hpp"
+#include "RTAB_map.hpp"
+
+#include "RTAB_incremental_kdtree.hpp"
+
+#if CV_MAJOR_VERSION == 2
+#include "RTAB_feature_extraction.hpp"
 #include "RTAB_incremental_vocabulary.hpp"
-//#include "RTAB_feature_extraction.hpp"
+#endif
 
 using namespace cv;
 
 void test_RTAB()
 {
-    //RTAB_node node();
+  //  RTAB_node node();
 
-    //vocabulary32 voc;
+ //   dynamic_kdtree32 kdtree = dynamic_kdtree32();
+    flann::IndexParams params = flann::KDTreeIndexParams(4);
+    
+    RTAB_incremental_kdtree<float> kdtree = RTAB_incremental_kdtree<float>(params, 1.1);
 }
 
 /*
@@ -34,6 +41,7 @@ void test_feature_extraction()
     featureExtrac.RTAB_feature_extraction_exe(newImg, descriptors);
 }*/
 
+#if CV_MAJOR_VERSION == 2
 void test_incremental_vocabulary()
 {
     int imgNum=300;
@@ -155,6 +163,5 @@ void test_incremental_vocabulary()
 
     vector<double> likelihood;
     vocab.computeLikelihood(imgNum, rankedScore, likelihood);
-
-
 }
+#endif

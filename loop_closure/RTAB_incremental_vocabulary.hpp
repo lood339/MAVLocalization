@@ -20,9 +20,9 @@
 #include <map>
 #include <vector>
 
-#define CV24 1
+#if CV_MAJOR_VERSION == 2
 
-#if CV24
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -32,7 +32,7 @@
 #include "opencv2/flann/miniflann.hpp"
 #include "opencv2/flann/flann_base.hpp"
 #include "opencv2/flann/flann.hpp"
-#endif
+
 
 
 using namespace std;
@@ -418,6 +418,7 @@ void RTAB_incremental_vocabulary<T>::computeLikelihood(int imgNum, vector<Ranked
 typedef RTAB_incremental_vocabulary<float> vocabulary32;
 typedef RTAB_incremental_vocabulary<double> vocabulary64;
 
+#endif
 
 
 #endif /* RTAB_incremental_vocabulary_cpp */

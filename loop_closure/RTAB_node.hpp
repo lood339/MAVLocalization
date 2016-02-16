@@ -12,7 +12,8 @@
 // location node "Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation" 2013
 // Real-Time Appearance-Based Mapping RTAB
 
-#include "cvxImage_300.h"
+#include "opencv2/core/core.hpp"
+#include "opencv2/core/core_c.h"
 #include <vector>
 #include <list>
 

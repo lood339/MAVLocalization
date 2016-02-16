@@ -1,5 +1,6 @@
 #include "RTAB_feature_extraction.hpp"
 
+#if CV_MAJOR_VERSION == 2
 
 RTAB_feature_extraction::RTAB_feature_extraction()
 {
@@ -41,4 +42,6 @@ RTAB_feature_extraction::~RTAB_feature_extraction()
 {
     //dtor
 }
+
+#endif
 
