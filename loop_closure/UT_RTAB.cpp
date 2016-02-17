@@ -25,9 +25,10 @@ void test_RTAB()
   //  RTAB_node node();
 
  //   dynamic_kdtree32 kdtree = dynamic_kdtree32();
-    flann::IndexParams params = flann::KDTreeIndexParams(4);
+ //   flann::IndexParams params = flann::KDTreeIndexParams(4);
     
-    RTAB_incremental_kdtree<float> kdtree = RTAB_incremental_kdtree<float>(params, 1.1);
+ //   RTAB_incremental_kdtree<float> kdtree = RTAB_incremental_kdtree<float>(params, 1.1);
+    test_incremental_kdtree();
 }
 
 /*
@@ -165,3 +166,8 @@ void test_incremental_vocabulary()
     vocab.computeLikelihood(imgNum, rankedScore, likelihood);
 }
 #endif
+
+void test_incremental_kdtree()
+{
+    
+}

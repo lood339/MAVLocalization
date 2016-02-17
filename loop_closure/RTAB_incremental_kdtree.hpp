@@ -25,11 +25,12 @@ template <class T>
 class RTAB_incremental_kdtree
 {
     flann::Index<flann::L2<T> > kdtree_;   // store kd tree
-    float rebuild_threshold_;
-    int dim_;
+    float rebuild_threshold_;              // > 1.0, the smaller, the more frequent rebuild
+    int dim_;                              // dimension of data
     
     // key: internal index in kd-tree, value: external in global
     std::unordered_map<unsigned long, unsigned long> index_map_;
+    // size() == size of the kdtree
     std::unordered_map<unsigned long, unsigned long> inverse_index_map_;
     
 public:
@@ -44,7 +45,6 @@ public:
         
     }
     RTAB_incremental_kdtree(){}
-    
     
     // create data and index
     bool create_tree(const cv::Mat & data, const vector<unsigned long> & data_index);
@@ -79,6 +79,7 @@ bool RTAB_incremental_kdtree<T>::create_tree(const cv::Mat & data, const vector<
     
     this->set_data(data);
     this->add_index(data_index);
+    assert(inverse_index_map_.size() == kdtree_.size());
     return true;
 }
 
@@ -90,7 +91,7 @@ bool RTAB_incremental_kdtree<T>::add_data(const cv::Mat & data, const vector<uns
     
     this->add_data(data);
     this->add_index(data_index);
-    
+    assert(inverse_index_map_.size() == kdtree_.size());
     return true;
 }
 
@@ -110,6 +111,7 @@ bool RTAB_incremental_kdtree<T>::remove_data(const vector<unsigned long> & data_
             assert(0);
         }
     }
+    assert(inverse_index_map_.size() == kdtree_.size());
     return true;
 }
 
@@ -147,7 +149,7 @@ void RTAB_incremental_kdtree<T>::search(const cv::Mat & query_data,
 }
 
 
-// private
+// private functions
 template <class T>
 void RTAB_incremental_kdtree<T>::set_data(const cv::Mat & data)
 {

@@ -14,8 +14,11 @@
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/calib3d/calib3d.hpp> // for homography
 
+
+
 using namespace std;
 using namespace cv;
+
 
 class RTAB_feature_extraction
 {
@@ -26,8 +29,19 @@ class RTAB_feature_extraction
     protected:
     private:
 };
+#endif
+
+
+#if CV_MAJOR_VERSION == 3
+#include <opencv2/features2d.hpp>
+//#include <opencv2/xfeatures2d.hpp>
 
 #endif
+
+
+
+
+
 
 #endif // RTAB_FEATURE_EXTRACTION_H
 
