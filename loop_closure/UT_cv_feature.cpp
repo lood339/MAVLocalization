@@ -210,7 +210,7 @@ void test_incremental_kdtree()
                 double dis1 = dists[j][0];
                 double dis2 = dists[j][1];
                 if (dis1 < dis2 * 0.7) {
-                    image_index_histogram[indices[j][0]] += 1;
+                    image_index_histogram[indices[j][0]/feature_num] += 1;
                 }
             }
             
@@ -221,12 +221,12 @@ void test_incremental_kdtree()
             Mat image2 = cv::imread(image_names[target_index]);
             
             printf("search result: %d %d\n", search_index, target_index);
-        //    cv::imshow("search image", image1);
-        //    cv::imshow("target image", image2);
-        //    cv::waitKey();
+            cv::imshow("search image", image1);
+            cv::imshow("target image", image2);
+            cv::waitKey();
             
         }
-        printf("i = %d\n", i);
+       // printf("i = %d\n", i);
     }    
 }
 
