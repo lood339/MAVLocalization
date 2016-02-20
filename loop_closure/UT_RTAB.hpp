@@ -11,7 +11,7 @@
 
 // RTAB unit test
 void test_RTAB();
-void test_incremental_kdtree();
+
 
 #if CV_MAJOR_VERSION == 2
 void test_feature_extraction();

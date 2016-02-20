@@ -24,8 +24,14 @@ class RTAB_feature_storage
 {
     
 public:
+    // save features to xml file
+    static bool save_features(const char *xml_fileName,
+                              const vector<String> & image_names,
+                              const vector<vector<cv::KeyPoint> > & keypointsSeq,
+                              const vector<cv::Mat> & descriptorSeq);
+    
     // assume features are from a sequence of images
-    static bool read_features(const char *fileName,
+    static bool read_features(const char *xml_fileName,
                               int num_image,
                               vector<String> & image_names,
                               vector<vector<cv::KeyPoint> > & keypointsSeq,

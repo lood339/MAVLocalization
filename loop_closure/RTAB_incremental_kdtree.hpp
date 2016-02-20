@@ -44,7 +44,10 @@ public:
         dim_ = 0;
         
     }
-    RTAB_incremental_kdtree(){}
+    RTAB_incremental_kdtree()
+    {
+        
+    }
     
     // create data and index
     bool create_tree(const cv::Mat & data, const vector<unsigned long> & data_index);
@@ -61,6 +64,9 @@ public:
                 vector<vector<int> > & indices,
                 vector<vector<T> > & dists,
                 const int knn) const;
+    
+    // internal state of the dynamic kdtree
+    void print_state(void);
     
 private:
     void set_data(const cv::Mat & data);
@@ -130,14 +136,16 @@ void RTAB_incremental_kdtree<T>::search(const cv::Mat & query_data,
         assert(sizeof(T) == sizeof(double));
     }
     
-    flann::Matrix<T> query_data_wrap((T *)query_data, query_data.rows, query_data.cols);
+    flann::Matrix<T> query_data_wrap((T *)query_data.data, query_data.rows, query_data.cols);
     kdtree_.knnSearch(query_data_wrap, indices, dists, knn, flann::SearchParams(128));
     
     // transfer internal index to external index
     for (int i = 0; i<indices.size(); i++) {
         for (int j = 0; j<indices[i].size(); j++) {
-            if (index_map_.find(indices[i][j]) != index_map_.end()) {
-                indices[i][j] = index_map_[indices[i][j]];
+            unsigned long index = indices[i][j];
+            std::unordered_map<unsigned long, unsigned long>::const_iterator ite = index_map_.find(index);
+            if (ite != index_map_.end()) {
+                indices[i][j] = ite->second;
             }
             else
             {
@@ -146,6 +154,17 @@ void RTAB_incremental_kdtree<T>::search(const cv::Mat & query_data,
             }
         }
     }
+}
+
+template <class T>
+void RTAB_incremental_kdtree<T>::print_state(void)
+{
+    printf("Dynamic kdtree state begin ------------\n");
+    printf("kd-tree  %lu number of features\n", kdtree_.size());
+    printf("[internal external] table size: %lu\n", index_map_.size());
+    printf("[external internal] table size: %lu\n", inverse_index_map_.size());
+    printf("Dynamic kdtree state end   ------------\n");
+    
 }
 
 

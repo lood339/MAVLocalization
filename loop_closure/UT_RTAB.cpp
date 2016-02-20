@@ -28,7 +28,6 @@ void test_RTAB()
  //   flann::IndexParams params = flann::KDTreeIndexParams(4);
     
  //   RTAB_incremental_kdtree<float> kdtree = RTAB_incremental_kdtree<float>(params, 1.1);
-    test_incremental_kdtree();
 }
 
 /*
@@ -167,7 +166,3 @@ void test_incremental_vocabulary()
 }
 #endif
 
-void test_incremental_kdtree()
-{
-    
-}
