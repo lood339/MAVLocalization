@@ -17,8 +17,8 @@
 
 
 using namespace std;
-using namespace cv;
-
+//using namespace cv; // avoid this in .h file as it will make flann conflict with cv::flann
+using cv::Mat;
 
 class RTAB_feature_extraction
 {
