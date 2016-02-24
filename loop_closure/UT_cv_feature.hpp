@@ -14,5 +14,6 @@ void test_cv_surf_feature();
 void test_save_surf_features();
 
 void test_incremental_kdtree();
+void test_bayesian_filter();
 
 #endif /* UT_cv_feature_cpp */

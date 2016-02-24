@@ -16,6 +16,7 @@
 #include "RTAB_feature_storage.hpp"
 #include "RTAB_incremental_kdtree.hpp"
 #include <unordered_map>
+#include <algorithm>
 
 using namespace cv::xfeatures2d;
 using cv::Mat;
@@ -34,9 +35,11 @@ void test_cv_surf_feature()
     double hessian = 800.0;
     cv::Ptr<cv::Feature2D> surf = SURF::create(hessian);
     
-    string image_name("/Users/jimmy/Desktop/images/SLAM_data/new_college/PrivateSign/StereoImages/StereoImage__1225719884.662058-left.pnm");
-    cv::Mat image = cv::imread("/Users/jimmy/Desktop/images/SLAM_data/new_college/PrivateSign/StereoImages/StereoImage__1225719884.662058-left.pnm");
+  //  string image_name("/Users/jimmy/Desktop/images/SLAM_data/new_college/PrivateSign/StereoImages/StereoImage__1225719884.662058-left.pnm");
+    string image_name("/Users/jimmy/Desktop/images/LoopClosureDetection/Lip6/Lip6OutdoorDataSet/Images/outdoor_kennedylong_000000.ppm");
+    cv::Mat image = cv::imread(image_name.c_str());
     //    Mat image = cv::imread("/Users/jimmy/Desktop/images/WWoS_soccer/06_30_07_00/camera1_0630/images/00023400.jpg");
+    
     
     Mat mask;
     vector<cv::KeyPoint> pts;
@@ -45,9 +48,9 @@ void test_cv_surf_feature()
     surf->detectAndCompute(image, mask, pts, descriptors, false);
     printf("surf cost time %f\n", (clock() - tt)/CLOCKS_PER_SEC);
     
-    pts.resize(500);
+  //  pts.resize(500);
     for (int i = 0; i<pts.size(); i++) {
-        cout<<pts[i].response<<endl;
+    //    cout<<pts[i].response<<endl;
     }
     
     cv::FileStorage fs("features.xml", cv::FileStorage::WRITE);
@@ -167,7 +170,7 @@ void test_incremental_kdtree()
     
     // randomly add and remove features
     int feature_num = 500;
-    for (int i = 0; i< 20; i++) {
+    for (int i = 0; i< 40; i++) {
         int index = rand()%descriptorSeq.size();
         
         if (internal_indices[index] == true) {
@@ -228,6 +231,20 @@ void test_incremental_kdtree()
         }
        // printf("i = %d\n", i);
     }    
+}
+
+void test_bayesian_filter()
+{
+    vector<int> data;
+    data.push_back(1);
+    data.push_back(4);
+    data.push_back(3);
+    data.push_back(2);
+    
+    int max_element_index = std::distance(data.begin(), std::max_element(data.begin(), data.end()));
+    
+    printf("max lement index is %d, value is %d\n", max_element_index, data[max_element_index]);
+    
 }
 
 
