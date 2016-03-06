@@ -44,7 +44,7 @@ public:
         dim_ = 0;
         
     }
-    RTAB_incremental_kdtree()
+    ~RTAB_incremental_kdtree()
     {
         
     }
