@@ -40,11 +40,10 @@ public:
     // feature_data_base: visual features
     // k: word vector length
     bool generate_visual_words(const cv::Mat & feature_data, int num_k_Mean);
-    
-    
+        
     
     // quantiaze all features in an image to a visual word
-    // word: normalized word frequency
+    // word: normalized word frequency, a row vector
     bool quantize_features(const cv::Mat & features, cv::Mat & word_frequency) const;
     
 private:

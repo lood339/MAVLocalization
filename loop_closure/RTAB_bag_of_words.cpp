@@ -8,6 +8,7 @@
 
 #include "RTAB_bag_of_words.hpp"
 #include <algorithm>
+#include <iostream>
 
 
 bool RTAB_bag_of_words::generate_visual_words(const cv::Mat & feature_data, int num_k_Mean)
@@ -35,6 +36,7 @@ bool RTAB_bag_of_words::generate_visual_words(const cv::Mat & feature_data, int 
     for (int i = 0; i<word_frequency.size(); i++) {
         word_frequency[i] /= partition_.rows;
     }
+ //   std::cout<<"word frequency is "<<cv::Mat(word_frequency)<<std::endl;
    
     // sort ratio
     vector<size_t> sorted_index = sort_indices<float>(word_frequency);
@@ -71,9 +73,9 @@ bool RTAB_bag_of_words::quantize_features(const cv::Mat & features, cv::Mat & wo
     kdtree_.search(features, indices, dists, 1);
     const int K = cluster_centers_.rows;
     
-    word_frequency = cv::Mat::zeros(K, 1, CV_32F);
+    word_frequency = cv::Mat::zeros(1, K, CV_32F);
     for (int i = 0; i<indices.size(); i++) {
-        word_frequency.at<float>(indices[i][0], 0) += 1.0;
+        word_frequency.at<float>(0, indices[i][0]) += 1.0;
     }
     
     cv::Mat n_word;
