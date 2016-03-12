@@ -9,7 +9,9 @@
 #include "RTAB_bag_of_words.hpp"
 #include <algorithm>
 #include <iostream>
+#include <unordered_map>
 
+using std::unordered_map;
 
 bool RTAB_bag_of_words::generate_visual_words(const cv::Mat & feature_data, int num_k_Mean)
 {
@@ -62,6 +64,49 @@ bool RTAB_bag_of_words::generate_visual_words(const cv::Mat & feature_data, int 
     return true;
 }
 
+bool RTAB_bag_of_words::generate_tf_idf_visual_words(const vector<cv::Mat> & database_features, int num_k_mean)
+{
+    assert(database_features.size() > 2);
+    
+    // generate general (non-tf-idf vocabulary tree)
+    cv::Mat all_features;
+    for (int i = 0; i<database_features.size(); i++) {
+        all_features.push_back(database_features[i]);
+    }
+    generate_visual_words(all_features, num_k_mean);
+    
+    // generate tf-idf parameters
+    num_images_ = (int)database_features.size();
+    
+    num_image_contain_term_ = vector<size_t>(num_k_mean, 0);
+    // i: image
+    // j: features in each image
+    // k: partition
+    for (int i = 0, k = 0; i<database_features.size(); i++) {
+        vector<bool> occur(num_k_mean, false);
+        for (int j = 0; j<database_features[i].rows; j++, k++) {
+            assert(k < partition_.rows);
+            int kmean_index = partition_.at<int>(k, 0);
+            assert(kmean_index >= 0 && kmean_index < num_k_mean);
+            occur[kmean_index] = true;
+        }
+        for (int j = 0; j<occur.size(); j++) {
+            // term j occurs in image i
+            if (occur[j]) {
+                num_image_contain_term_[j] += 1;
+            }
+        }
+    }
+    log_N_ni_ = vector<double>(num_k_mean, 1.0);
+    for (int i = 0; i<log_N_ni_.size(); i++) {
+        log_N_ni_[i] = log(1.0*num_images_/num_image_contain_term_[i]);
+    //    printf("num_image_contain_term_ %d \n", num_image_contain_term_[i]);
+    }
+    
+    has_tf_idf_ = true;
+    return true;
+}
+
 
 bool RTAB_bag_of_words::quantize_features(const cv::Mat & features, cv::Mat & word_frequency) const
 {
@@ -81,6 +126,38 @@ bool RTAB_bag_of_words::quantize_features(const cv::Mat & features, cv::Mat & wo
     cv::Mat n_word;
     cv::normalize(word_frequency, n_word);
     word_frequency = n_word;
+    return true;
+}
+
+bool RTAB_bag_of_words::quantize_features_it_idf(const cv::Mat & descriptors,
+                                                 cv::Mat & word) const
+{
+    assert(has_tf_idf_);
+    assert(descriptors.type() == CV_32F);
+    
+    // search
+    vector<vector<int>> indices;
+    vector<vector<float> > dists;
+    kdtree_.search(descriptors, indices, dists, 1);
+    const int K = cluster_centers_.rows;
+    assert(K == log_N_ni_.size());
+    
+    // n_id
+    word = cv::Mat::zeros(1, K, CV_32F);
+    for (int i = 0; i<indices.size(); i++) {
+        word.at<float>(0, indices[i][0]) += 1.0;
+    }
+    
+    // tf-idf
+    double nd = descriptors.rows;
+    for (int i = 0; i<word.rows; i++) {
+        double n_id = word.at<float>(0, i);
+        word.at<float>(0, i) = n_id/nd*log_N_ni_[i];
+    }
+    
+    cv::Mat n_word;
+    cv::normalize(word, n_word);
+    word = n_word;
     return true;
 }
 

@@ -17,5 +17,6 @@ void test_incremental_kdtree();
 void test_bayesian_filter();
 
 void test_bag_of_words();
+void test_tf_idf_bag_of_words();
 
 #endif /* UT_cv_feature_cpp */

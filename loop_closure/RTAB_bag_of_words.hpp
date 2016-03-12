@@ -31,24 +31,40 @@ class RTAB_bag_of_words
     
     RTAB_kdtree<float> kdtree_;
     
+    // tf_idf parameter
+    bool has_tf_idf_;
+    int num_images_;
+    vector<size_t> num_image_contain_term_; // the number of images containing the term. index: word index; value: number of images what it occurs
+    vector<double> log_N_ni_;          // cache of "inverse document frequence"
+    
 public:
     RTAB_bag_of_words()
     {
+        has_tf_idf_ = false;
     }
     ~RTAB_bag_of_words(){;}
     
     // feature_data_base: visual features
     // k: word vector length
-    bool generate_visual_words(const cv::Mat & feature_data, int num_k_Mean);
-        
+    bool generate_visual_words(const cv::Mat & feature_database, int num_k_mean);
     
-    // quantiaze all features in an image to a visual word
+    // quantize all features (descriptors) in an image to a visual word
     // word: normalized word frequency, a row vector
     bool quantize_features(const cv::Mat & features, cv::Mat & word_frequency) const;
+    
+    // database_features: features from multiple images
+    // tf_idf: term frequency–inverse document frequency .a text retrieval method
+    bool generate_tf_idf_visual_words(const vector<cv::Mat> & database_features, int num_k_mean);
+    
+    // quantize all descriptors in an image to a visual word
+    // tf_idf: term frequency–inverse document frequency .a text retrieval method
+    bool quantize_features_it_idf(const cv::Mat & descriptors,
+                                  cv::Mat & word) const;
     
 private:
     
   //  bool set_stop_list(const double top_ratio = 0.05, const double bottom_ratio = 0.1);
+    
    
     
 };
