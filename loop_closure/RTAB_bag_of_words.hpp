@@ -58,8 +58,12 @@ public:
     
     // quantize all descriptors in an image to a visual word
     // tf_idf: term frequency–inverse document frequency .a text retrieval method
-    bool quantize_features_it_idf(const cv::Mat & descriptors,
-                                  cv::Mat & word) const;
+    bool quantize_features_it_idf(const cv::Mat & descriptors, cv::Mat & word) const;
+    
+    // only for cluster center, partition, and kdtree
+    bool write_vocabulary(const char *xml_file) const;
+    bool read_vocabulary(const char *xml_file);
+    
     
 private:
     

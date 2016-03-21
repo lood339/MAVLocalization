@@ -119,8 +119,6 @@ private:
     }
     
     
-    
-    
 };
 
 #endif /* RTAB_bayesian_cpp */

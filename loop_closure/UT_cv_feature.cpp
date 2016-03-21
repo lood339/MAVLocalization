@@ -256,6 +256,11 @@ void test_bayesian_filter()
     
 }
 
+void test_loop_closure_detection()
+{
+    test_keyframe_selection();
+}
+
 void test_bag_of_words()
 {
     // read all feature
@@ -419,6 +424,80 @@ void test_tf_idf_bag_of_words()
         cv::waitKey();
     }
 }
+
+void test_keyframe_selection()
+{
+    // assume all frame are seen before
+    // read all feature
+    const char data_set_file[] = "/Users/jimmy/Desktop/images/LoopClosureDetection/Lip6/Lip6OutdoorDataSet/lip6_outdoor_surf_1063.xml";
+    vector<cv::String> image_names;
+    vector<vector<cv::KeyPoint> > keypointsSeq;
+    vector<cv::Mat> descriptorSeq;
+    RTAB_feature_storage::read_features(data_set_file, 1063, image_names, keypointsSeq, descriptorSeq);
+    
+    Mat database_feature;
+    for (int i = 0; i<descriptorSeq.size(); i++) {
+        database_feature.push_back(descriptorSeq[i]);
+    }
+    
+    // train
+    RTAB_bag_of_words bow;
+  //  int num_k_mean = 500;
+  //  bow.generate_visual_words(database_feature, num_k_mean);
+ //   printf("feature number is %d, and num of k mean is %d\n", database_feature.rows, num_k_mean);
+    
+ //   bow.write_vocabulary("bow.xml");
+    bow.read_vocabulary("/Users/jimmy/Desktop/images/LoopClosureDetection/Lip6/Lip6OutdoorDataSet/vocabulary_500.xml");
+    
+    // randomly select 20% as feature data and another 80% as query feature
+    vector<int> image_index(image_names.size());
+    for (int i = 0; i<image_index.size(); i++) {
+        image_index[i] = i;
+    }
+    std::random_shuffle(image_index.begin(), image_index.end());
+    
+    int stop_index = 0.2 * image_index.size();
+    vector<int> train_index(image_index.begin(), image_index.begin() + stop_index);
+    vector<int> test_index(image_index.begin() + stop_index, image_index.end());
+    
+    cv::Mat vocabulary; // vocabulary from training features
+    for (int i = 0; i<train_index.size(); i++) {
+        cv::Mat word_frequency;
+        bow.quantize_features(descriptorSeq[train_index[i]], word_frequency);
+        vocabulary.push_back(word_frequency);
+    }
+    
+    // test on the training index
+    // test_index = train_index;
+    // query for the test index
+    vector<std::pair<int, int> > matched_images_pairs; // test index and database image index pair
+    for (int i = 0; i<test_index.size(); i++) {
+        int index = test_index[i];
+        cv::Mat test_word_fre;
+        bow.quantize_features(descriptorSeq[index], test_word_fre);
+        
+        // keep minimum distance index
+        float max_dot_product = 0;
+        int max_index = -1;
+        for (int j = 0; j<vocabulary.rows; j++) {
+            double dot = test_word_fre.dot(vocabulary.row(j));  // dot product, the larger the better
+            if (dot > max_dot_product) {
+                max_dot_product = dot;
+                max_index = train_index[j];
+            }
+        }
+        matched_images_pairs.push_back(std::pair<int, int>(index, max_index));
+        
+        // show paired image
+        cv::Mat query_image  = cv::imread(image_names[index].c_str());
+        cv::Mat result_image = cv::imread(image_names[max_index].c_str());
+        cv::imshow("query image", query_image);
+        cv::imshow("result image", result_image);
+        printf("dot product is %f\n", max_dot_product);
+        cv::waitKey();
+    }
+}
+
 
 
 

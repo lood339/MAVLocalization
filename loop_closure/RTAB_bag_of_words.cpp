@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 using std::unordered_map;
+using cv::FileStorage;
 
 bool RTAB_bag_of_words::generate_visual_words(const cv::Mat & feature_data, int num_k_Mean)
 {
@@ -159,6 +160,37 @@ bool RTAB_bag_of_words::quantize_features_it_idf(const cv::Mat & descriptors,
     cv::normalize(word, n_word);
     word = n_word;
     return true;
+}
+
+bool RTAB_bag_of_words::write_vocabulary(const char *xml_fileName) const
+{
+    cv::FileStorage fs;
+    bool isOpen = fs.open(xml_fileName, FileStorage::WRITE);
+    if (!isOpen) {
+        printf("file open error: %s\n", xml_fileName);
+        return false;
+    }
+    fs<<"cluster_center"<<cluster_centers_;
+    fs<<"partition"<<partition_;    
+    fs.release();
+    printf("write vocabulary to %s\n", xml_fileName);
+    return true;
+}
+
+bool RTAB_bag_of_words::read_vocabulary(const char *fileName)
+{
+    cv::FileStorage fs;
+    bool isOpen = fs.open(fileName, FileStorage::READ);
+    if (!isOpen) {
+        printf("file open error: %s\n", fileName);
+        return false;
+    }
+    fs[std::string("cluster_center")]>>cluster_centers_;
+    fs[std::string("partition")]>>partition_;
+    kdtree_.create_tree(cluster_centers_);
+    fs.release();
+    printf("read vocabulary from %s\n", fileName);
+    return true;    
 }
 
 
