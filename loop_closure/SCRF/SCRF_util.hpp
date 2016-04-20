@@ -19,26 +19,19 @@ using std::vector;
 class SCRF_learning_sample
 {
 public:
-    cv::Vec2i p_;   // 2d location
-    cv::Point3d p3d_; // 3d coordinate, only used for training, invalid when in testing
-    double depth_;    // depth in camera coordinate
-    double inv_depth_; // inverted depth
-    int image_index_; // image index
+    cv::Point2i p2d_;    // 2d location
+    cv::Point3d p3d_;   // 3d coordinate, only used for training, invalid when in testing
+    double depth_;      // depth in camera coordinate
+    double inv_depth_;  // inverted depth
+    int image_index_;  // image index
     
 public:
-    cv::Vec2i get_displacement(const double dx, const double dy) const
+    cv::Point2i add_offset(const cv::Point2d & offset) const
     {
-        int x = cvRound(p_[0] + dx * inv_depth_);
-        int y = cvRound(p_[1] + dy * inv_depth_);
-        return cv::Vec2i(x, y);
-    }
-    
-    cv::Vec2i get_displacement(const cv::Vec2d & offset) const
-    {
-        int x = cvRound(p_[0] + offset[0] * inv_depth_);
-        int y = cvRound(p_[1] + offset[1] * inv_depth_);
-     //   printf("offset is %lf, %lf\n", offset[0] * inv_depth_, offset[1] * inv_depth_);
-        return cv::Vec2i(x, y);
+        int x = cvRound(p2d_.x + offset.x * inv_depth_);
+        int y = cvRound(p2d_.y + offset.y * inv_depth_);
+        
+        return cv::Point2i(x, y);
     }
 };
 
@@ -61,6 +54,9 @@ struct SCRF_tree_parameter
     int max_pixel_offset_;  // in pixel
     int pixel_offset_candidate_num_;  // large number less randomness
     int split_candidate_num_;  // number of split in [v_min, v_max]
+    int weight_candidate_num_;
+    
+    bool verbose_;
     
     SCRF_tree_parameter()
     {
@@ -69,15 +65,18 @@ struct SCRF_tree_parameter
         min_leaf_node_ = 50;
         
         max_pixel_offset_ = 131;
-        pixel_offset_candidate_num_ = 100;
+        pixel_offset_candidate_num_ = 20;
         split_candidate_num_ = 20;
+        weight_candidate_num_ = 10;
+        verbose_ = true;
     }
     
     void printSelf() const
     {
         printf("SCRF tree parameters:\n");
         printf("tree_num: %d\t max_depth: %d\t min_leaf_node: %d\n", tree_num_, max_depth_, min_leaf_node_);
-        printf("max_pixel_offset: %d\t pixel_offset_candidate_num: %d\t split_candidate_num %d\n\n", max_pixel_offset_, pixel_offset_candidate_num_, split_candidate_num_);
+        printf("max_pixel_offset: %d\t pixel_offset_candidate_num: %d\t split_candidate_num %d\n", max_pixel_offset_, pixel_offset_candidate_num_, split_candidate_num_);
+        printf("weight_candidate_num_: %d\n\n", weight_candidate_num_);
     }
 };
 
@@ -87,8 +86,28 @@ public:
     // centroid of all indixed locations
     static cv::Point3d mean_location(const vector<SCRF_learning_sample> & samples, const vector<unsigned int> & indices);
     
+    static void mean_stddev(const vector<SCRF_learning_sample> & sample,
+                            const vector<unsigned int> & indices,
+                            cv::Point3d & mean_pt,
+                            cv::Vec3d & stddev);
+    
+    // box filter
+    // criteria.epsilon: squred distance in meter
+    // return: number of points in the box
+    static int mean_shift(const vector<cv::Point3d> & pts,
+                           cv::Point3d & mean_pt,
+                           cv::Vec3d & stddev,
+                           const cv::TermCriteria & criteria);
+    
+    static void mean_shift(const vector<SCRF_learning_sample> & sample,
+                           const vector<unsigned int> & indices,
+                           cv::Point3d & mean_pt,
+                           cv::Vec3d & stddev);
+
+    
     // spatial variance of selected samples
     static double spatial_variance(const vector<SCRF_learning_sample> & samples, const vector<unsigned int> & indices);
+    
     
     static void mean_std_position(const vector<cv::Point3d> & points, cv::Point3d & mean_pos, cv::Vec3d & std_pos);
     

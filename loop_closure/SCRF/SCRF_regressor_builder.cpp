@@ -59,7 +59,7 @@ bool SCRF_regressor_builder::build_model(SCRF_regressor& model,
     
         SCRF_tree *tree = new SCRF_tree();
         assert(tree);
-        tree->verbose_ = false;
+        tree->verbose_ = tree_param_.verbose_;
         tree->build(samples, training_data_indices, rgbImages, tree_param_);
         trees.push_back(tree);
         

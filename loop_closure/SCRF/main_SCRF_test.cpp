@@ -38,8 +38,8 @@ static vector<string> read_file_names(const char *file_name)
 
 static void help()
 {
-    printf("program    RGBImageList depthImageList cameraPoseList decisionTreeParameterFile numSamplePerImage saveFile\n");
-    printf("SCRF_train rgbs.txt     depth.txt      poses.txt      RF_param.txt              5000              scrf.txt\n");
+    printf("program   modelFile RGBImageList depthImageList cameraPoseList numSamplePerImage saveFile\n");
+    printf("SCRF_test scrf.txt  rgbs.txt     depth.txt      poses.txt      5000              error.txt \n");
     printf("parameter fits to MS 7 scenes dataset\n");
 }
 
@@ -51,12 +51,13 @@ int main(int argc, const char * argv[])
         help();
         return -1;
     }
-    const char * rgb_image_file = argv[1];
-    const char * depth_image_file = argv[2];
-    const char * camera_to_wld_pose_file = argv[3];
-    const char * tree_param_file = argv[4];
+    
+    const char * model_file = argv[1];
+    const char * rgb_image_file = argv[2];
+    const char * depth_image_file = argv[3];
+    const char * camera_to_wld_pose_file = argv[4];
     const int num_random_sample = (int)strtod(argv[5], NULL);
-    const char * save_model_file = argv[6];
+    const char * save_file = argv[6];
     
     assert(num_random_sample > 100);
     
@@ -70,6 +71,15 @@ int main(int argc, const char * argv[])
     assert(rgb_files.size() == depth_files.size());
     assert(rgb_files.size() == pose_files.size());
     
+    // read model
+    SCRF_regressor model;
+    bool is_read = model.load(model_file);
+    if (!is_read) {
+        printf("Error: can not read from file %s\n", model_file);
+        return -1;
+    }
+    
+    // read images
     for (int i = 0; i<rgb_files.size(); i++) {
         const char *rgb_img_file     = rgb_files[i].c_str();
         const char *depth_img_file   = depth_files[i].c_str();
@@ -79,28 +89,40 @@ int main(int argc, const char * argv[])
         cv::Mat rgb_img;
         bool is_read = cvx_io::imread_depth_16bit_to_64f(depth_img_file, camera_depth_img);
         assert(is_read);
-        cvx_io::imread_rgb_8u(rgb_img_file, rgb_img);
+        is_read = cvx_io::imread_rgb_8u(rgb_img_file, rgb_img);
+        assert(is_read);
         
         vector<SCRF_learning_sample> samples = SCRF_Util::randomSampleFromRgbdImages(rgb_img_file, depth_img_file, pose_file, num_random_sample, i);
-        
-        all_samples.insert(all_samples.begin(), samples.begin(), samples.end());
         rgb_images.push_back(rgb_img);
+        all_samples.insert(all_samples.begin(), samples.begin(), samples.end());
     }
     
     printf("train image number is %lu, sample number is %lu\n", rgb_images.size(), all_samples.size());
     
-    SCRF_regressor_builder builder;
-    SCRF_regressor model;
-   
-    SCRF_tree_parameter tree_param;
+    vector<SCRF_testing_result> predictions;
+    for (int i = 0; i<all_samples.size(); i++) {
+        int image_index = all_samples[i].image_index_;
+        assert(image_index >= 0 && image_index < rgb_images.size());
+        SCRF_testing_result result;
+        bool is_predict = model.predict(all_samples[i], rgb_images[image_index], result);
+        if (is_predict) {
+            predictions.push_back(result);
+        }
+    }
     
-    bool is_read = SCRF_Util::readTreeParameter(tree_param_file, tree_param);
-    assert(is_read);
-    builder.setTreeParameter(tree_param);
-    builder.build_model(model, all_samples, rgb_images);
+    printf("predict %lu from %lu samples\n", predictions.size(), all_samples.size());
+    cv::Point3d test_error = SCRF_Util::prediction_error_stddev(predictions);
+    cout<<"testing error from read file is "<<test_error<<endl;
     
-    model.save(save_model_file);
-    printf("save model to %s\n", save_model_file);
+    cv::Mat prediction_error((int)predictions.size(), 3, CV_64FC1);
+    for (int i = 0; i<predictions.size(); i++) {
+        prediction_error.at<double>(i, 0) = predictions[i].predict_error.x;
+        prediction_error.at<double>(i, 1) = predictions[i].predict_error.y;
+        prediction_error.at<double>(i, 2) = predictions[i].predict_error.z;
+    }
+    
+    cvx_io::save_mat(save_file, prediction_error);
+    printf("prediction error write to %s\n", save_file);
     
     return 0;
 }

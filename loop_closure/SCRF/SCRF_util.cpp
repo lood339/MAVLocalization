@@ -36,6 +36,141 @@ cv::Point3d SCRF_Util::mean_location(const vector<SCRF_learning_sample> & sample
     return cv::Point3d(x, y, z);
 }
 
+void SCRF_Util::mean_stddev(const vector<SCRF_learning_sample> & samples,
+                            const vector<unsigned int> & indices,
+                            cv::Point3d & mean,
+                            cv::Vec3d & stddev)
+{
+    assert(indices.size() > 0);
+    
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+    for (int i = 0; i<indices.size(); i++) {
+        int index = indices[i];
+        assert(index >=0 && index < samples.size());
+        x += samples[index].p3d_.x;
+        y += samples[index].p3d_.y;
+        z += samples[index].p3d_.z;
+    }
+    
+    x /= indices.size();
+    y /= indices.size();
+    z /= indices.size();
+    
+    mean = cv::Point3d(x, y, z);
+    double devx = 0.0;
+    double devy = 0.0;
+    double devz = 0.0;
+    for (int i = 0 ; i<indices.size(); i++) {
+        int index = indices[i];
+        assert(index >=0 && index < samples.size());
+        double difx = samples[index].p3d_.x - x;
+        double dify = samples[index].p3d_.y - y;
+        double difz = samples[index].p3d_.z - z;
+        devx += difx * difx;
+        devy += dify * dify;
+        devz += difz * difz;
+    }
+    devx = sqrt(devx/indices.size());
+    devy = sqrt(devy/indices.size());
+    devz = sqrt(devz/indices.size());
+    stddev = cv::Vec3d(devx, devy, devz);
+    return;
+}
+
+int SCRF_Util::mean_shift(const vector<cv::Point3d> & pts,
+                           cv::Point3d & mean_pt,
+                           cv::Vec3d & stddev,
+                           const cv::TermCriteria & criteria)
+{
+    assert(pts.size() > 0);
+    const int maxCount = criteria.maxCount;
+    const double epsilon = criteria.epsilon;
+    
+    vector<bool> inliers(pts.size(), true);
+    for (int i = 0; i<maxCount; i++) {
+        cv::Point3d cur_mean(0, 0, 0);
+        int num_inlier = 0;
+        for (int j = 0; j<inliers.size(); j++) {
+            if (inliers[j]) {
+                cur_mean += pts[j];
+                num_inlier++;
+            }
+        }
+        cur_mean /= num_inlier;
+        
+        // reset inlier
+        for (int j = 0; j<pts.size(); j++) {
+            cv::Point3d dif = pts[j] - cur_mean;
+            double dis2 = dif.x * dif.x + dif.y * dif.y + dif.z * dif.z;
+            if (dis2 < epsilon) {
+                inliers[j] = true;
+            }
+            else
+            {
+                inliers[j] = false;
+            }
+        }
+    }
+    
+    
+    // center point
+    mean_pt = cv::Point3d(0, 0, 0);
+    int num_inlier = 0;
+    for (int i = 0; i<inliers.size(); i++) {
+        if (inliers[i]) {
+            mean_pt += pts[i];
+            num_inlier++;
+        }
+    }
+    assert(num_inlier > 0);
+    mean_pt /= num_inlier;
+    
+    
+    double devx = 0.0;
+    double devy = 0.0;
+    double devz = 0.0;
+    for (int i = 0 ; i<inliers.size(); i++) {
+        if (inliers[i]) {
+            double difx = mean_pt.x - pts[i].x;
+            double dify = mean_pt.y - pts[i].y;
+            double difz = mean_pt.z - pts[i].z;
+            devx += difx * difx;
+            devy += dify * dify;
+            devz += difz * difz;
+        }
+    }
+    devx = sqrt(devx/num_inlier);
+    devy = sqrt(devy/num_inlier);
+    devz = sqrt(devz/num_inlier);
+    stddev = cv::Vec3d(devx, devy, devz);
+    
+    return num_inlier;
+}
+
+void SCRF_Util::mean_shift(const vector<SCRF_learning_sample> & sample,
+                           const vector<unsigned int> & indices,
+                           cv::Point3d & mean_pt,
+                           cv::Vec3d & stddev)
+{
+    cv::TermCriteria criteria;
+    criteria.maxCount = 10;
+    criteria.epsilon = 0.1 * 0.1;
+    
+    vector<cv::Point3d> pts;
+    for (int i = 0; i<indices.size(); i++) {
+        pts.push_back(sample[i].p3d_);
+    }
+    
+    SCRF_Util::mean_shift(pts, mean_pt, stddev, criteria);
+  //  int SCRF_Util::mean_shift(const vector<cv::Point3d> & pts,
+       //                       cv::Point3d & mean_pt,
+            //                  cv::Vec3d & stddev,
+              //                const cv::TermCriteria & criteria)
+    
+}
+
 double SCRF_Util::spatial_variance(const vector<SCRF_learning_sample> & samples, const vector<unsigned int> & indices)
 {
     cv::Point3d p_mean = SCRF_Util::mean_location(samples, indices);
@@ -45,10 +180,10 @@ double SCRF_Util::spatial_variance(const vector<SCRF_learning_sample> & samples,
         int index = indices[i];
         assert(index >=0 && index < samples.size());
         Point3d dif = p_mean - samples[index].p3d_;
-      //  var += dif.x * dif.x + dif.y * dif.y + dif.z * dif.z;
-        var += fabs(dif.x) + fabs(dif.y) + fabs(dif.z);
+        var += dif.x * dif.x + dif.y * dif.y + dif.z * dif.z;
+      //  var += fabs(dif.x) + fabs(dif.y) + fabs(dif.z);
     }
-  //  var /= indices.size();
+    //var /= indices.size();
     return var;
 }
 
@@ -128,9 +263,8 @@ vector<SCRF_learning_sample> SCRF_Util::randomSampleFromRgbdImages(const char * 
     
     const int width = rgb_img.cols;
     const int height = rgb_img.rows;
-    
-    cv::Mat world_depth_img      = ms_7_scenes_util::camera_depth_to_world_depth(camera_depth_img, pose);
-    cv::Mat world_coordinate_img = ms_7_scenes_util::camera_depth_to_world_coordinate(camera_depth_img, pose);
+
+    cv::Mat world_coordinate = ms_7_scenes_util::camera_depth_to_world_coordinate(camera_depth_img, pose);
     
     for (int i = 0; i<num_sample; i++) {
         int x = rand()%width;
@@ -140,13 +274,13 @@ vector<SCRF_learning_sample> SCRF_Util::randomSampleFromRgbdImages(const char * 
             continue;
         }
         SCRF_learning_sample sp;
-        sp.p_ = cv::Vec2i(x, y);
+        sp.p2d_ = cv::Vec2i(x, y);
         sp.depth_ = camera_depth/1000.0; // to meter
         sp.inv_depth_ = 1.0/sp.depth_;
         sp.image_index_ = image_index;
-        sp.p3d_.x = world_coordinate_img.at<cv::Vec3d>(y, x)[0];
-        sp.p3d_.y = world_coordinate_img.at<cv::Vec3d>(y, x)[1];
-        sp.p3d_.z = world_coordinate_img.at<cv::Vec3d>(y, x)[2];
+        sp.p3d_.x = world_coordinate.at<cv::Vec3d>(y, x)[0];
+        sp.p3d_.y = world_coordinate.at<cv::Vec3d>(y, x)[1];
+        sp.p3d_.z = world_coordinate.at<cv::Vec3d>(y, x)[2];
         
         samples.push_back(sp);
     }
@@ -176,7 +310,7 @@ bool SCRF_Util::readTreeParameter(const char *file_name, SCRF_tree_parameter & t
         }
         imap[string(s)] = val;
     }
-    assert(imap.size() == 6);
+    assert(imap.size() == 8);
     
     tree_param.tree_num_ = imap[string("tree_num")];
     tree_param.max_depth_ = imap[string("max_depth")];
@@ -184,11 +318,11 @@ bool SCRF_Util::readTreeParameter(const char *file_name, SCRF_tree_parameter & t
     tree_param.max_pixel_offset_ = imap[string("max_pixel_offset")];
     tree_param.pixel_offset_candidate_num_ = imap[string("pixel_offset_candidate_num")];
     tree_param.split_candidate_num_ = imap[string("split_candidate_num")];
+    tree_param.weight_candidate_num_ = imap[string("weight_candidate_num")];
+    tree_param.verbose_ = imap[string("verbose")];
     
     fclose(pf);
-    
-    return true;
-    
+    return true;    
 }
 
 

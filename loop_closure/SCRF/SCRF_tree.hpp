@@ -37,8 +37,7 @@ public:
         verbose_ = true;
     }
     ~SCRF_tree(){;} //@todo release memory
-    
-    
+        
     
     SCRF_tree_node * root_node()
     {
@@ -56,13 +55,8 @@ public:
     }
     // training random forest by build a decision tree
     // samples: sampled image pixel locations
-    // rgbImages: same size, rgb, 8bit image
-    // depthImages: same size, 16bit image
-    bool build(const vector<SCRF_learning_sample> & samples,
-               const vector<cv::Mat> & rgbImages,               
-               const SCRF_tree_parameter & param);
-    
     // indices: index of samples
+    // rgbImages: same size, rgb, 8bit image
     bool build(const vector<SCRF_learning_sample> & samples,
                const vector<unsigned int> & indices,
                const vector<cv::Mat> & rgbImages,
@@ -93,11 +87,12 @@ private:
 
 struct SCRF_split_parameter
 {
-    cv::Vec2d d1_;  // displacement in image coordinate
-    cv::Vec2d d2_;
+    cv::Point2d offset2_;  // displacement in image, [x, y]
     int c1_;        // rgb image channel
     int c2_;
-    double threhold_;  // threshold of splitting. store result
+    double w1_;
+    double w2_;
+    double threhold_;  // threshold of splitting. store result  
     
 public:
     SCRF_split_parameter()
@@ -105,6 +100,8 @@ public:
         c1_ = 0;
         c2_ = 0;
         threhold_ = 0.0;
+        w1_ = 1.0;
+        w2_ = -1.0;
     }
 };
 
@@ -116,6 +113,7 @@ public:
     
     SCRF_split_parameter split_param_;    
     cv::Point3d p3d_; // world coordinate of the node, only available in leaf node
+    cv::Vec3d stddev_;
     
     int depth_;
     bool is_leaf_;
