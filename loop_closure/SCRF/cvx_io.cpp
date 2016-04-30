@@ -258,7 +258,7 @@ cv::Mat ms_7_scenes_util::camera_depth_to_world_coordinate(const cv::Mat & camer
     for (int r = 0; r < height; r++) {
         for (int c = 0; c < width; c++) {
             double camera_depth = camera_depth_img.at<double>(r, c)/1000.0; // to meter
-            if (camera_depth == 65.535 || camera_depth < 0.001 || camera_depth > 10.0) {
+            if (camera_depth == 65.535 || camera_depth < 0.1 || camera_depth > 10.0) {
                 // invalid depth
                 //printf("invalid depth %lf\n", camera_depth);
                 mask.at<unsigned char>(r, c) = 0;
@@ -320,7 +320,7 @@ bool ms_7_scenes_util::load_prediction_result(const char *file_name, string & rg
     
     {
         char dummy_buf[1024] = {NULL};
-        fscanf(pf, "%s", dummy_buf);
+        fgets(dummy_buf, sizeof(dummy_buf), pf);
         printf("%s\n", dummy_buf);
     }
     
@@ -341,5 +341,79 @@ bool ms_7_scenes_util::load_prediction_result(const char *file_name, string & rg
     printf("read %lu prediction and ground truth points.\n", wld_pts_gt.size());
     
     return true;
+}
+
+bool ms_7_scenes_util::load_prediction_result_with_color(const char *file_name,
+                                       string & rgb_img_file,
+                                       string & depth_img_file,
+                                       string & camera_pose_file,
+                                       vector<cv::Point2d> & img_pts,
+                                       vector<cv::Point3d> & wld_pts_pred,
+                                       vector<cv::Point3d> & wld_pts_gt,
+                                       vector<cv::Vec3d> & color_pred,
+                                       vector<cv::Vec3d> & color_sample)
+{
+    assert(file_name);
+    FILE *pf = fopen(file_name, "r");
+    if (!pf) {
+        printf("Error, can not read from %s\n", file_name);
+        return false;
+    }
+    
+    {
+        char buf[1024] = {NULL};
+        fscanf(pf, "%s", buf);
+        rgb_img_file = string(buf);
+    }
+    
+    {
+        char buf[1024] = {NULL};
+        fscanf(pf, "%s", buf);
+        depth_img_file = string(buf);
+    }
+    
+    {
+        char buf[1024] = {NULL};
+        fscanf(pf, "%s\n", buf);   // remove the last \n
+        camera_pose_file = string(buf);
+    }
+    
+    {
+        char dummy_buf[1024] = {NULL};
+        fgets(dummy_buf, sizeof(dummy_buf), pf);
+        printf("%s\n", dummy_buf);
+    }
+    
+    while (1) {
+        double val[8] = {0.0};
+        int ret = fscanf(pf, "%lf %lf %lf %lf %lf %lf %lf %lf", &val[0], &val[1],
+                         &val[2], &val[3], &val[4],
+                         &val[5], &val[6], &val[7]);
+        if (ret != 8) {
+            break;
+        }
+        
+        // 2D , 3D position
+        img_pts.push_back(cv::Point2d(val[0], val[1]));
+        wld_pts_pred.push_back(cv::Point3d(val[2], val[3], val[4]));
+        wld_pts_gt.push_back(cv::Point3d(val[5], val[6], val[7]));
+        
+        double val2[6] = {0.0};
+        ret = fscanf(pf, "%lf %lf %lf %lf %lf %lf",
+                     &val2[0], &val2[1], &val2[2],
+                     &val2[3], &val2[4], &val2[5]);
+        if (ret != 6) {
+            break;
+        }
+        color_pred.push_back(cv::Vec3d(val2[0], val2[1], val2[2]));
+        color_sample.push_back(cv::Vec3d(val2[3], val2[4], val2[5]));
+        assert(img_pts.size() == color_pred.size());
+    }
+    fclose(pf);
+    printf("read %lu prediction and ground truth points.\n", wld_pts_gt.size());
+    
+    return true;
+
+    
 }
 

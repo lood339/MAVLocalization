@@ -78,10 +78,7 @@ private:
     bool predict(const SCRF_tree_node * const node,
                  const SCRF_learning_sample & sample,
                  const cv::Mat & rgbImage,
-                 SCRF_testing_result & predict) const;
-    
-    
-    
+                 SCRF_testing_result & predict) const;  
     
 };
 
@@ -103,6 +100,11 @@ public:
         w1_ = 1.0;
         w2_ = -1.0;
     }
+    
+    void print_self()
+    {
+        printf("SCRF split parameter is (w1, w2, threshold): %lf %lf %lf\n", w1_, w2_, threhold_);
+    }
 };
 
 class SCRF_tree_node
@@ -112,11 +114,12 @@ public:
     SCRF_tree_node *right_child_;
     
     SCRF_split_parameter split_param_;    
-    cv::Point3d p3d_; // world coordinate of the node, only available in leaf node
+    cv::Point3d p3d_;      // world coordinate of the node, only available in leaf node
     cv::Vec3d stddev_;
     
     int depth_;
     bool is_leaf_;
+    int node_size_;   // number of examples
     
     SCRF_tree_node()
     {
@@ -124,13 +127,15 @@ public:
         right_child_ = NULL;
         is_leaf_ = false;
         depth_ = 0;
+        node_size_ = 0;
     }
     SCRF_tree_node(int depth)
     {
         left_child_ = NULL;
         right_child_ = NULL;
         is_leaf_ = false;
-        depth_ = depth;        
+        depth_ = depth;
+        node_size_ = 0;
     }
     
     static bool write_tree(const char *fileName, SCRF_tree_node * root);

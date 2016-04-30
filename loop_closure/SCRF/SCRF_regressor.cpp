@@ -27,7 +27,6 @@ bool SCRF_regressor::predict(const SCRF_learning_sample & sample,
                              SCRF_testing_result & predict) const
 {
     assert(trees_.size() > 0);
-    
     vector<cv::Point3d> preds;   
     for (int i = 0; i<trees_.size(); i++) {
         SCRF_testing_result data;
@@ -41,8 +40,11 @@ bool SCRF_regressor::predict(const SCRF_learning_sample & sample,
         return false;
     }
     
-    SCRF_Util::mean_std_position(preds, predict.predict_p3d_, predict.std_);
-    predict.predict_error = predict.predict_p3d_ - sample.p3d_;
+    predict.predict_p3d_ = cv::Point3d(0.0, 0.0, 0.0);
+    for (int i = 0; i<preds.size(); i++) {
+        predict.predict_p3d_ += preds[i];
+    }
+    predict.predict_p3d_ /= (double)preds.size();
     
     return true;
 }
@@ -57,9 +59,9 @@ bool SCRF_regressor::save(const char *fileName) const
         return false;
     }
     SCRF_tree_parameter param = trees_[0]->param_;
-    fprintf(pf, "tree_num max_depth min_leaf_node max_pixel_offset pixel_offset_num num_random_split\n");
-    fprintf(pf, "%d\t %d\t %d\t %d\t %d\t %d\n", (int)trees_.size(), param.max_depth_, param.min_leaf_node_,
-                param.max_pixel_offset_, param.pixel_offset_candidate_num_, param.split_candidate_num_);
+    fprintf(pf, "tree_num max_depth min_leaf_node max_pixel_offset pixel_offset_num num_random_split weight_candidate_num\n");
+    fprintf(pf, "%d\t %d\t %d\t %d\t %d\t %d\t %d\n", (int)trees_.size(), param.max_depth_, param.min_leaf_node_,
+                param.max_pixel_offset_, param.pixel_offset_candidate_num_, param.split_candidate_num_, param.weight_candidate_num_);
     
     vector<string> tree_files;
     string baseName = string(fileName);
@@ -97,8 +99,10 @@ bool SCRF_regressor::load(const char *fileName)
     int max_pixel_offset = 0;
     int pixel_offset_random_num = 0;
     int num_split_random = 0;
-    int ret = fscanf(pf, "%d %d %d %d %d %d", &tree_num, &max_depth, &min_leaf_node, &max_pixel_offset, &pixel_offset_random_num, &num_split_random);
-    assert(ret == 6);
+    int num_weight_candidate = 0;
+    int ret = fscanf(pf, "%d %d %d %d %d %d %d", &tree_num, &max_depth, &min_leaf_node, &max_pixel_offset, &pixel_offset_random_num, &num_split_random,
+                     &num_weight_candidate);
+    assert(ret == 7);
     
     SCRF_tree_parameter param;
     param.max_depth_ = max_depth;
@@ -106,6 +110,7 @@ bool SCRF_regressor::load(const char *fileName)
     param.max_pixel_offset_ = max_pixel_offset;
     param.pixel_offset_candidate_num_ = pixel_offset_random_num;
     param.split_candidate_num_ = num_split_random;
+    param.weight_candidate_num_ = num_weight_candidate;
     
     vector<string> treeFiles;
     for (int i = 0; i<tree_num; i++) {

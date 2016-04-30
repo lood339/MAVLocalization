@@ -76,6 +76,17 @@ public:
                                        vector<cv::Point2d> & img_pts,
                                        vector<cv::Point3d> & wld_pts_pred,
                                        vector<cv::Point3d> & wld_pts_gt);
+    
+    // load prediction result from decision trees with color information
+    static bool load_prediction_result_with_color(const char *file_name,
+                                                  string & rgb_img_file,
+                                                  string & depth_img_file,
+                                                  string & camera_pose_file,
+                                                  vector<cv::Point2d> & img_pts,
+                                                  vector<cv::Point3d> & wld_pts_pred,
+                                                  vector<cv::Point3d> & wld_pts_gt,
+                                                  vector<cv::Vec3d> & color_pred,
+                                                  vector<cv::Vec3d> & color_sample);
 };
 
 

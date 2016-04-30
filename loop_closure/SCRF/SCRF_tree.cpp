@@ -28,55 +28,8 @@ bool SCRF_tree::build(const vector<SCRF_learning_sample> & samples,
     rng_ = cv::RNG(std::time(0) + 10000);
     param_ = param;
     return this->configure_node(samples, rgbImages, indices, 0, root_, param);
-    return true;
 }
 
-bool SCRF_tree::predict(const SCRF_learning_sample & sample,
-                        const cv::Mat & rgbImage,
-                        SCRF_testing_result & predict) const
-{
-    assert(root_);
-    return this->predict(root_, sample, rgbImage, predict);
-}
-
-bool SCRF_tree::predict(const SCRF_tree_node * const node,
-                        const SCRF_learning_sample & sample,
-                        const cv::Mat & rgbImage,
-                        SCRF_testing_result & predict) const
-{
-    if (node->is_leaf_) {
-        predict.predict_p3d_ = node->p3d_;
-        predict.predict_error = node->p3d_ - sample.p3d_;        // prediction error
-        return true;
-    }
-    else
-    {        
-        cv::Point2i p1 = sample.p2d_;
-        cv::Point2i p2 = sample.add_offset(node->split_param_.offset2_);
-        
-        bool is_inside_image2 = SCRF_Util::is_inside_image(rgbImage.cols, rgbImage.rows, p2.x, p2.y);
-        if (is_inside_image2) {
-            cv::Vec3b pixel_1 = rgbImage.at<cv::Vec3b>(p1.y, p1.x);
-            cv::Vec3b pixel_2 = rgbImage.at<cv::Vec3b>(p2.y, p2.x);
-            
-            double pixel_1_c = pixel_1[node->split_param_.c1_];
-            double pixel_2_c = pixel_2[node->split_param_.c2_];
-            double pixel_dif = pixel_1_c * node->split_param_.w1_ + pixel_2_c * node->split_param_.w2_;
-            if (pixel_dif < node->split_param_.threhold_ && node->left_child_) {
-                return this->predict(node->left_child_, sample, rgbImage, predict);
-            }
-            else if(node->right_child_)
-            {
-                return this->predict(node->right_child_, sample, rgbImage, predict);
-            }
-        }
-        else
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 static vector<double> random_number_from_range(double min_val, double max_val, int rnd_num)
 
@@ -94,11 +47,12 @@ static vector<double> random_number_from_range(double min_val, double max_val, i
 static double best_split_random_parameter(const vector<SCRF_learning_sample> & samples,
                                           const vector<cv::Mat> & rgbImages,
                                           const vector<unsigned int> & indices,
-                                          SCRF_split_parameter & split_param,
+                                          const SCRF_split_parameter & split_param,
                                           int min_node_size,
                                           int num_split_random,
                                           vector<unsigned int> & left_indices,
-                                          vector<unsigned int> & right_indices)
+                                          vector<unsigned int> & right_indices,
+                                          double & split_threshold)
 {
     double min_loss = std::numeric_limits<double>::max();
     
@@ -115,11 +69,12 @@ static double best_split_random_parameter(const vector<SCRF_learning_sample> & s
         
         const cv::Mat rgb_image = rgbImages[smp.image_index_];
        
+        
         bool is_inside_image2 = SCRF_Util::is_inside_image(rgb_image.cols, rgb_image.rows, p2.x, p2.y);
         double pixel_1_c = 0.0;   // out of image as black pixels
         double pixel_2_c = 0.0;
         
-        cv::Vec3b pix_1 = rgb_image.at<cv::Vec3b>(p1.y, p1.x); // (row, col)
+        cv::Vec3b pix_1 = rgb_image.at<cv::Vec3b>(p1.y, p1.x);    // (row, col)
         pixel_1_c = pix_1[c1];
         
         if (is_inside_image2) {
@@ -153,7 +108,7 @@ static double best_split_random_parameter(const vector<SCRF_learning_sample> & s
                 cur_right_index.push_back(index);
             }
         }
-        if (cur_left_index.size() < 2 * min_node_size || cur_right_index.size() < 2 * min_node_size) {
+        if (cur_left_index.size() *2 < min_node_size || cur_right_index.size() * 2 < min_node_size) {
             continue;
         }
         cur_loss = SCRF_Util::spatial_variance(samples, cur_left_index);
@@ -166,8 +121,7 @@ static double best_split_random_parameter(const vector<SCRF_learning_sample> & s
             min_loss = cur_loss;
             left_indices  = cur_left_index;
             right_indices = cur_right_index;
-            split_param.threhold_ = split_v;
-            //printf("split value is %lf\n", split_param.threhold_);
+            split_threshold = split_v;
         }
     }
     if (!is_split) {
@@ -181,29 +135,41 @@ static double best_split_random_parameter(const vector<SCRF_learning_sample> & s
 static double best_split_weight(const vector<SCRF_learning_sample> & samples,
                                 const vector<cv::Mat> & rgbImages,
                                 const vector<unsigned int> & indices,
-                                SCRF_split_parameter & split_param,  // inoutput
+                                const SCRF_split_parameter & split_param,  // inoutput
                                 const vector<cv::Vec2d> & candidate_weights,
                                 int min_node_size,
                                 int num_split_random,
                                 vector<unsigned int> & left_indices,
-                                vector<unsigned int> & right_indices)
+                                vector<unsigned int> & right_indices,
+                                double & split_threshold,
+                                double & w1,
+                                double & w2)
 {
     double min_loss = std::numeric_limits<double>::max();
-    SCRF_split_parameter split_param_copy = split_param;
+    
     for (int i = 0; i<candidate_weights.size(); i++) {
-        SCRF_split_parameter cur_split_param = split_param_copy;
+        SCRF_split_parameter cur_split_param = split_param;
         cur_split_param.w1_ = candidate_weights[i][0];
         cur_split_param.w2_ = candidate_weights[i][1];
         vector<unsigned int> cur_left_indices;
         vector<unsigned int> cur_right_indices;
-        double cur_loss = best_split_random_parameter(samples, rgbImages, indices,
-                                                      cur_split_param, min_node_size, num_split_random,
-                                                      cur_left_indices, cur_right_indices);
+        double cur_split_value = 0.0;
+        double cur_loss = best_split_random_parameter(samples,
+                                                      rgbImages,
+                                                      indices,
+                                                      cur_split_param,
+                                                      min_node_size,
+                                                      num_split_random,
+                                                      cur_left_indices,
+                                                      cur_right_indices,
+                                                      cur_split_value);
         if (cur_loss < min_loss) {
             min_loss = cur_loss;
-            split_param   = cur_split_param;
+            split_threshold = cur_split_value;
             left_indices  = cur_left_indices;
             right_indices = cur_right_indices;
+            w1 = cur_split_param.w1_;
+            w2 = cur_split_param.w2_;
         }
     }
     
@@ -223,10 +189,11 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
     assert(indices.size() <= samples.size());
     
     if (depth >= param.max_depth_ || indices.size() < param.min_leaf_node_) {
-        node->depth_ = depth;
+        node->depth_   = depth;
         node->is_leaf_ = true;
+        node->node_size_ = (int)indices.size();
         SCRF_Util::mean_stddev(samples, indices, node->p3d_, node->stddev_);
-        if (verbose_) {
+        if (param_.verbose_leaf_) {
             printf("depth, num_leaf_node, %d, %lu\n", depth, indices.size());
             cout<<"mean      location: "<<node->p3d_<<endl;
             cout<<"standard deviation: "<<node->stddev_<<endl;
@@ -238,7 +205,7 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
     const int max_pixel_offset = param.max_pixel_offset_;
     const int max_channel = 3;
     const int max_random_num = param.pixel_offset_candidate_num_;
-    const int min_node_size = param.min_leaf_node_;
+    const int min_node_size  = param.min_leaf_node_;
     const int num_split_random = param.split_candidate_num_;
     const int num_weight = param.weight_candidate_num_;
     double min_loss = std::numeric_limits<double>::max();
@@ -256,8 +223,8 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
     SCRF_split_parameter split_param;
     bool is_split = false;
     for (int i = 0; i<max_random_num; i++) {
-        double x2 = rng_.uniform((double)-max_pixel_offset, (double)max_pixel_offset);
-        double y2 = rng_.uniform((double)-max_pixel_offset, (double)max_pixel_offset);
+        double x2 = rng_.uniform(-(double)max_pixel_offset, (double)max_pixel_offset);
+        double y2 = rng_.uniform(-(double)max_pixel_offset, (double)max_pixel_offset);
         int c1 = rand()%max_channel;
         int c2 = rand()%max_channel;
         
@@ -268,27 +235,44 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
         
         vector<unsigned int> cur_left_indices;
         vector<unsigned int> cur_right_indices;
+        double cur_split_threshold = 0.0;
+        double w1 = 0.0;
+        double w2 = 0.0;
         
         double cur_loss = best_split_weight(samples, rgbImages, indices, cur_split_param,
                                             random_weights,
-                                            min_node_size, num_split_random, cur_left_indices, cur_right_indices);
+                                            min_node_size, num_split_random,
+                                            cur_left_indices,
+                                            cur_right_indices,
+                                            cur_split_threshold,
+                                            w1,
+                                            w2);
         if (cur_loss < min_loss) {
             is_split = true;
             min_loss = cur_loss;
             left_indices  = cur_left_indices;
             right_indices = cur_right_indices;
             split_param = cur_split_param;
+            split_param.threhold_ = cur_split_threshold;
+            split_param.w1_ = w1;
+            split_param.w2_ = w2;
         }
     }
     
     if (is_split) {
         assert(left_indices.size() + right_indices.size() == indices.size());
-        if (verbose_) {
-            printf("left, right node number is %lu %lu, percentage: %f loss: %lf\n", left_indices.size(), right_indices.size(), 1.0*left_indices.size()/indices.size(), min_loss);            
+        if (param_.verbose_split_) {
+            printf("left, right node number is %lu %lu, percentage: %f loss: %lf\n",
+                   left_indices.size(),
+                   right_indices.size(),
+                   1.0*left_indices.size()/indices.size(),
+                   min_loss);
+            split_param.print_self();
         }
         
         node->split_param_ = split_param;
-    //    cout<<"split parameter is "<<split_param.d1_<<" "<<split_param.d2_<<endl;
+        node->node_size_ = (int)indices.size();
+    
         SCRF_tree_node *left_node = new SCRF_tree_node(depth);
         this->configure_node(samples, rgbImages, left_indices, depth + 1, left_node, param);
         node->left_child_ = left_node;
@@ -302,9 +286,10 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
     {
      //   printf("split failed!\n");
         node->depth_   = depth;
-        node->is_leaf_ = true;       
+        node->is_leaf_ = true;
+        node->node_size_ = (int)indices.size();
         SCRF_Util::mean_stddev(samples, indices, node->p3d_, node->stddev_);
-        if (verbose_) {
+        if (param_.verbose_leaf_) {
             printf("depth, num_leaf_node, %d, %lu\n", depth, indices.size());
             cout<<"mean      location: "<<node->p3d_<<endl;
             cout<<"standard deviation: "<<node->stddev_<<endl;
@@ -312,6 +297,61 @@ bool SCRF_tree::configure_node(const vector<SCRF_learning_sample> & samples,
         return true;
     }
 }
+
+bool SCRF_tree::predict(const SCRF_learning_sample & sample,
+                        const cv::Mat & rgbImage,
+                        SCRF_testing_result & predict) const
+{
+    assert(root_);
+    return this->predict(root_, sample, rgbImage, predict);
+}
+
+bool SCRF_tree::predict(const SCRF_tree_node * const node,
+                        const SCRF_learning_sample & sample,
+                        const cv::Mat & rgbImage,
+                        SCRF_testing_result & predict) const
+{
+    if (node->is_leaf_) {
+        predict.predict_p3d_  = node->p3d_;
+        return true;
+    }
+    else
+    {
+        cv::Point2i p1 = sample.p2d_;
+        cv::Point2i p2 = sample.add_offset(node->split_param_.offset2_);
+        
+        
+        bool is_inside_image2 = SCRF_Util::is_inside_image(rgbImage.cols, rgbImage.rows, p2.x, p2.y);
+        cv::Vec3b pixel_1 = rgbImage.at<cv::Vec3b>(p1.y, p1.x);
+        
+        double pixel_1_c = pixel_1[node->split_param_.c1_];
+        double pixel_2_c = 0.0;
+        
+        if (is_inside_image2)
+        {
+            cv::Vec3b pixel_2 = rgbImage.at<cv::Vec3b>(p2.y, p2.x);
+            pixel_2_c = pixel_2[node->split_param_.c2_];            
+        }
+        else
+        {
+            pixel_2_c = 0.0;
+        }
+        
+        double pixel_dif = pixel_1_c * node->split_param_.w1_ + pixel_2_c * node->split_param_.w2_;
+        if (pixel_dif < node->split_param_.threhold_ && node->left_child_) {
+            return this->predict(node->left_child_, sample, rgbImage, predict);
+        }
+        else if(node->right_child_)
+        {
+            return this->predict(node->right_child_, sample, rgbImage, predict);
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
 
 
 /**************************   SCRF_tree_node   ********************/
@@ -325,11 +365,15 @@ static void write_SCRF_prediction(FILE *pf, SCRF_tree_node * node)
     }
     // write current node
     SCRF_split_parameter param = node->split_param_;
-    fprintf(pf, "%d %d\t %d\t %lf %lf %d\t %lf %lf %lf\t %lf %lf %lf\n", node->depth_, (int)node->is_leaf_,
+    fprintf(pf, "%d %d\t %d %d\t %12.6f %12.6f %d\t %12.6f %12.6f %12.6f\t %12.6f %12.6f %12.6f\t %12.6f %12.6f %12.6f\n",
+            node->depth_,
+            (int)node->is_leaf_,
+            node->node_size_,
             param.c1_,
             param.offset2_.x, param.offset2_.y, param.c2_,
             param.w1_, param.w2_, param.threhold_,
-            node->p3d_.x, node->p3d_.y, node->p3d_.z);
+            node->p3d_.x, node->p3d_.y, node->p3d_.z,
+            node->stddev_[0], node->stddev_[1], node->stddev_[2]);
     
     write_SCRF_prediction(pf, node->left_child_);
     write_SCRF_prediction(pf, node->right_child_);
@@ -344,7 +388,7 @@ bool SCRF_tree_node::write_tree(const char *fileName, SCRF_tree_node * root)
         printf("can not open file %s\n", fileName);
         return false;
     }
-    fprintf(pf, "depth\t isLeaf\t c1\t displace2\t c2\t w1 w2\t threshold\t wld_3d\n");
+    fprintf(pf, "depth\t isLeaf\t nodeSize\t c1\t displace2\t c2\t w1 w2\t threshold\t wld_3d\t stddev\n");
     
     write_SCRF_prediction(pf, root);
     fclose(pf);
@@ -371,6 +415,7 @@ static void read_rf_constant_prediction(FILE *pf, SCRF_tree_node * & node)
     assert(node);
     int depth = 0;
     int isLeaf = 0;
+    int nodeSize = 0;
     
     double d2[2] = {0.0};
     int c1 = 0;        // rgb image channel
@@ -378,19 +423,22 @@ static void read_rf_constant_prediction(FILE *pf, SCRF_tree_node * & node)
     double wt[2] = {0.0};
     double threhold = 0;
     double xyz[3] = {0.0};
+    double xyzStddev[3] = {0.0};
     
-    int ret_num = sscanf(lineBuf, "%d %d %d %lf %lf %d %lf %lf %lf %lf %lf %lf",  &depth, &isLeaf,
+    int ret_num = sscanf(lineBuf, "%d %d %d %d %lf %lf %d %lf %lf %lf %lf %lf %lf %lf %lf %lf",  &depth, &isLeaf, &nodeSize,
            &c1,
            &d2[0], &d2[1], &c2,
            &wt[0], &wt[1],
            &threhold,
-           &xyz[0], &xyz[1], &xyz[2]);
-    assert(ret_num == 12);
+           &xyz[0], &xyz[1], &xyz[2],
+           &xyzStddev[0], &xyzStddev[1], &xyzStddev[2]);
+    assert(ret_num == 16);
     
     
     node->depth_ = depth;
     node->is_leaf_ = (isLeaf == 1);
     node->p3d_ = cv::Point3d(xyz[0], xyz[1], xyz[2]);
+    node->stddev_ = cv::Vec3d(xyzStddev[0], xyzStddev[1], xyzStddev[2]);
     
     SCRF_split_parameter param;    
     param.offset2_ = cv::Point2d(d2[0], d2[1]);

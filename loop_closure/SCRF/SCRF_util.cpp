@@ -218,34 +218,53 @@ void SCRF_Util::mean_std_position(const vector<cv::Point3d> & points, cv::Point3
     std_pos = cv::Vec3d(dev_x, dev_y, dev_z);
 }
 
-cv::Point3d SCRF_Util::prediction_error_stddev(const vector<SCRF_testing_result> & results)
+vector<double> SCRF_Util::prediction_error_distance(const vector<SCRF_testing_result> & results)
 {
     assert(results.size() > 0);
     
-    
-    double dx = 0.0;
-    double dy = 0.0;
-    double dz = 0.0;
-    for (int i = 0; i<results.size(); i++) {
-        cv::Point3d error = results[i].predict_error;
-        dx += error.x * error.x;
-        dy += error.y * error.y;
-        dz += error.z * error.z;
+    vector<double> distance;
+    for (int i =0; i < results.size(); i++) {
+        distance.push_back(results[i].error_distance());
     }
-    
-    dx = sqrt(dx/results.size());
-    dy = sqrt(dy/results.size());
-    dz = sqrt(dz/results.size());
-    
-    cv::Point3d stddev(dx, dy, dz);
-    return stddev;
+    return distance;
 }
 
-vector<SCRF_learning_sample> SCRF_Util::randomSampleFromRgbdImages(const char * rgb_img_file,
-                                                               const char * depth_img_file,
-                                                               const char * camera_pose_file,
-                                                               const int num_sample,
-                                                               const int image_index)
+cv::Point3d SCRF_Util::appro_median_error(const vector<SCRF_testing_result> & results)
+{
+    assert(results.size() > 0);
+    
+    double mx = 0.0;
+    double my = 0.0;
+    double mz = 0.0;
+    
+    vector<double> error_x;
+    vector<double> error_y;
+    vector<double> error_z;
+    for (int i = 0; i<results.size(); i++) {
+        cv::Point3d dif = results[i].gt_p3d_ - results[i].predict_p3d_;
+        error_x.push_back(fabs(dif.x));
+        error_y.push_back(fabs(dif.y));
+        error_z.push_back(fabs(dif.z));
+    }
+    
+    std::sort(error_x.begin(), error_x.end());
+    std::sort(error_y.begin(), error_y.end());
+    std::sort(error_z.begin(), error_z.end());
+    
+    mx = error_x[error_x.size()/2];
+    my = error_y[error_y.size()/2];
+    mz = error_z[error_z.size()/2];
+    
+    return cv::Point3d(mx, my, mz);
+}
+
+
+vector<SCRF_learning_sample>
+SCRF_Util::randomSampleFromRgbdImages(const char * rgb_img_file,
+                                      const char * depth_img_file,
+                                      const char * camera_pose_file,
+                                      const int num_sample,
+                                      const int image_index)
 {
     assert(rgb_img_file);
     assert(depth_img_file);
@@ -264,18 +283,21 @@ vector<SCRF_learning_sample> SCRF_Util::randomSampleFromRgbdImages(const char * 
     const int width = rgb_img.cols;
     const int height = rgb_img.rows;
 
-    cv::Mat world_coordinate = ms_7_scenes_util::camera_depth_to_world_coordinate(camera_depth_img, pose);
+    cv::Mat mask;
+    cv::Mat world_coordinate = ms_7_scenes_util::camera_depth_to_world_coordinate(camera_depth_img, pose, mask);
     
     for (int i = 0; i<num_sample; i++) {
         int x = rand()%width;
         int y = rand()%height;
-        double camera_depth = camera_depth_img.at<double>(y, x);
-        if (camera_depth == 0.0 || camera_depth == ms_7_scenes_util::invalid_camera_depth()) {
+        
+        // ignore bad depth point
+        if (mask.at<unsigned char>(y, x) == 0) {
             continue;
         }
+        double camera_depth = camera_depth_img.at<double>(y, x)/1000.0;
         SCRF_learning_sample sp;
         sp.p2d_ = cv::Vec2i(x, y);
-        sp.depth_ = camera_depth/1000.0; // to meter
+        sp.depth_ = camera_depth; // to meter
         sp.inv_depth_ = 1.0/sp.depth_;
         sp.image_index_ = image_index;
         sp.p3d_.x = world_coordinate.at<cv::Vec3d>(y, x)[0];
@@ -310,7 +332,7 @@ bool SCRF_Util::readTreeParameter(const char *file_name, SCRF_tree_parameter & t
         }
         imap[string(s)] = val;
     }
-    assert(imap.size() == 8);
+    assert(imap.size() == 9);
     
     tree_param.tree_num_ = imap[string("tree_num")];
     tree_param.max_depth_ = imap[string("max_depth")];
@@ -319,7 +341,8 @@ bool SCRF_Util::readTreeParameter(const char *file_name, SCRF_tree_parameter & t
     tree_param.pixel_offset_candidate_num_ = imap[string("pixel_offset_candidate_num")];
     tree_param.split_candidate_num_ = imap[string("split_candidate_num")];
     tree_param.weight_candidate_num_ = imap[string("weight_candidate_num")];
-    tree_param.verbose_ = imap[string("verbose")];
+    tree_param.verbose_leaf_ = imap[string("verbose_leaf")];
+    tree_param.verbose_split_ = imap[string("verbose_split")];
     
     fclose(pf);
     return true;    

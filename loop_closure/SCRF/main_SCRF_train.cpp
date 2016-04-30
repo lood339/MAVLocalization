@@ -70,6 +70,14 @@ int main(int argc, const char * argv[])
     assert(rgb_files.size() == depth_files.size());
     assert(rgb_files.size() == pose_files.size());
     
+    // read tree parameter
+    SCRF_regressor_builder builder;
+    SCRF_regressor model;
+    SCRF_tree_parameter tree_param;
+    bool is_read = SCRF_Util::readTreeParameter(tree_param_file, tree_param);
+    assert(is_read);
+    
+    // read rgb files
     for (int i = 0; i<rgb_files.size(); i++) {
         const char *rgb_img_file     = rgb_files[i].c_str();
         const char *depth_img_file   = depth_files[i].c_str();
@@ -83,21 +91,14 @@ int main(int argc, const char * argv[])
         
         vector<SCRF_learning_sample> samples = SCRF_Util::randomSampleFromRgbdImages(rgb_img_file, depth_img_file, pose_file, num_random_sample, i);
         
-        all_samples.insert(all_samples.begin(), samples.begin(), samples.end());
+        all_samples.insert(all_samples.end(), samples.begin(), samples.end());
         rgb_images.push_back(rgb_img);
     }
     
-    printf("train image number is %lu, sample number is %lu\n", rgb_images.size(), all_samples.size());
+    printf("train image number is %lu, sample number is %lu\n", rgb_images.size(), all_samples.size());    
     
-    SCRF_regressor_builder builder;
-    SCRF_regressor model;
-   
-    SCRF_tree_parameter tree_param;
-    
-    bool is_read = SCRF_Util::readTreeParameter(tree_param_file, tree_param);
-    assert(is_read);
     builder.setTreeParameter(tree_param);
-    builder.build_model(model, all_samples, rgb_images);
+    builder.build_model(model, all_samples, rgb_images, save_model_file);
     
     model.save(save_model_file);
     printf("save model to %s\n", save_model_file);

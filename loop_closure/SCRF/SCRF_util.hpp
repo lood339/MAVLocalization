@@ -38,10 +38,20 @@ public:
 class SCRF_testing_result
 {
 public:
+    cv::Point2d p2d_;           // image position
+    cv::Point3d gt_p3d_;        // as ground truth, not used in prediction
     cv::Point3d predict_p3d_;   // predicted world coordinate
-    cv::Point3d predict_error;  // prediction - ground truth
     
-    cv::Vec3d  std_;     // prediction standard deviation
+    double error_distance() const
+    {
+        double dis = 0.0;
+        cv::Point3d dif = predict_p3d_ - gt_p3d_;
+        dis += dif.x * dif.x;
+        dis += dif.y * dif.y;
+        dis += dif.z * dif.z;
+        return sqrt(dis);
+    }
+    
 };
 
 
@@ -56,7 +66,9 @@ struct SCRF_tree_parameter
     int split_candidate_num_;  // number of split in [v_min, v_max]
     int weight_candidate_num_;
     
-    bool verbose_;
+  //  bool verbose_;
+    bool verbose_leaf_;
+    bool verbose_split_;
     
     SCRF_tree_parameter()
     {
@@ -68,7 +80,8 @@ struct SCRF_tree_parameter
         pixel_offset_candidate_num_ = 20;
         split_candidate_num_ = 20;
         weight_candidate_num_ = 10;
-        verbose_ = true;
+        verbose_leaf_ = true;
+        verbose_split_ = true;
     }
     
     void printSelf() const
@@ -111,7 +124,10 @@ public:
     
     static void mean_std_position(const vector<cv::Point3d> & points, cv::Point3d & mean_pos, cv::Vec3d & std_pos);
     
-    static cv::Point3d prediction_error_stddev(const vector<SCRF_testing_result> & results);
+    static vector<double> prediction_error_distance(const vector<SCRF_testing_result> & results);
+    
+    // approximate median
+    static cv::Point3d appro_median_error(const vector<SCRF_testing_result> & results);
     
     static inline bool is_inside_image(const int width, const int height, const int x, const int y)
     {
